@@ -1,6 +1,8 @@
 defmodule SoSinpleWeb.Router do
   use SoSinpleWeb, :router
 
+  import SoSinpleWeb.UserAuth
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,6 +10,7 @@ defmodule SoSinpleWeb.Router do
     plug :put_root_layout, html: {SoSinpleWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :fetch_current_user
   end
 
   pipeline :api do
@@ -39,6 +42,88 @@ defmodule SoSinpleWeb.Router do
 
       live_dashboard "/dashboard", metrics: SoSinpleWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+  end
+
+  ## Authentication routes
+
+  scope "/", SoSinpleWeb do
+    pipe_through [:browser, :redirect_if_user_is_authenticated]
+
+    live_session :redirect_if_user_is_authenticated,
+      on_mount: [{SoSinpleWeb.UserAuth, :redirect_if_user_is_authenticated}] do
+      live "/users/register", UserRegistrationLive, :new
+      live "/users/log_in", UserLoginLive, :new
+      live "/users/reset_password", UserForgotPasswordLive, :new
+      live "/users/reset_password/:token", UserResetPasswordLive, :edit
+    end
+
+    post "/users/log_in", UserSessionController, :create
+  end
+
+  scope "/", SoSinpleWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live_session :require_authenticated_user,
+      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated}, {SoSinpleWeb.UserAuth, :mount_current_user}] do
+      live "/users/settings", UserSettingsLive, :edit
+      live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
+
+      # Liste des groupes de l'utilisateur
+      live "/groups", GroupLive.Index, :index
+      live "/groups/new", GroupLive.Index, :new
+    end
+
+    # Routes pour un groupe spécifique
+    live_session :group_access,
+      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
+                 {SoSinpleWeb.UserAuth, :mount_current_user},
+                 {SoSinpleWeb.UserAuth, :check_group_access}] do
+      live "/groups/:group_id", GroupLive.Show, :show
+      live "/groups/:group_id/edit", GroupLive.Edit, :edit
+
+      # Liste des QG d'un groupe
+      live "/groups/:group_id/headquarters", HeadquartersLive.Index, :index
+      live "/groups/:group_id/headquarters/new", HeadquartersLive.Index, :new
+    end
+
+    # Routes pour un QG spécifique
+    live_session :headquarters_access,
+      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
+                 {SoSinpleWeb.UserAuth, :mount_current_user},
+                 {SoSinpleWeb.UserAuth, :check_headquarters_access}] do
+      live "/groups/:group_id/headquarters/:headquarters_id", HeadquartersLive.Show, :show
+      live "/groups/:group_id/headquarters/:headquarters_id/edit", HeadquartersLive.Show, :edit
+    end
+
+    # Routes pour les rôles utilisateurs d'un groupe
+    live_session :user_roles_access,
+      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
+                 {SoSinpleWeb.UserAuth, :mount_current_user},
+                 {SoSinpleWeb.UserAuth, :check_user_roles_access}] do
+      live "/groups/:group_id/user_roles", UserRoleLive.Index, :index
+      live "/groups/:group_id/user_roles/new", UserRoleLive.Index, :new
+    end
+
+    # Routes pour un rôle utilisateur spécifique
+    live_session :user_role_access,
+      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
+                 {SoSinpleWeb.UserAuth, :mount_current_user},
+                 {SoSinpleWeb.UserAuth, :check_user_role_access}] do
+      live "/groups/:group_id/user_roles/:user_role_id", UserRoleLive.Show, :show
+      live "/groups/:group_id/user_roles/:user_role_id/edit", UserRoleLive.Show, :edit
+    end
+  end
+
+  scope "/", SoSinpleWeb do
+    pipe_through [:browser]
+
+    delete "/users/log_out", UserSessionController, :delete
+
+    live_session :current_user,
+      on_mount: [{SoSinpleWeb.UserAuth, :mount_current_user}] do
+      live "/users/confirm/:token", UserConfirmationLive, :edit
+      live "/users/confirm", UserConfirmationInstructionsLive, :new
     end
   end
 end
