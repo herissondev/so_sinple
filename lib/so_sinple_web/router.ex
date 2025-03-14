@@ -117,6 +117,7 @@ defmodule SoSinpleWeb.Router do
       live "/groups/:group_id/headquarters/:headquarter_id/stock_items/:stock_item_id/edit", StockItemLive.Edit, :edit
       live "/groups/:group_id/headquarters/:headquarter_id/stock_items/:stock_item_id", StockItemLive.Show, :show
 
+
       # Gestion des commandes d'un QG
       live "/groups/:group_id/headquarters/:headquarter_id/orders", OrderLive.Index, :index
       live "/groups/:group_id/headquarters/:headquarter_id/orders/new", OrderLive.New, :new

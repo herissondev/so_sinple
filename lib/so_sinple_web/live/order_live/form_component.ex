@@ -12,7 +12,9 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
      socket
      |> assign(:order_items, %{})  # Changed to map for easier item quantity tracking
      |> assign(:available_items, [])
-     |> assign(:total, 0.0)}
+     |> assign(:total, 0.0)
+     |> assign(:address_suggestions, [])
+     |> assign(:address_data, %{})}
   end
 
   @impl true
@@ -37,19 +39,34 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
             <.input field={@form[:client_nom]} type="text" label="Nom" required />
             <.input field={@form[:client_prenom]} type="text" label="Prénom" required />
             <.input field={@form[:client_telephone]} type="tel" label="Téléphone" required />
-            <.input field={@form[:client_adresse]} type="text" label="Adresse" />
           </div>
 
           <div>
             <h3 class="text-lg font-semibold mb-4">Informations livraison</h3>
-            <.select field={@form[:headquarters_id]} type="select" label="Point de vente" options={headquarters_options(@current_group.id)} required />
-            <.input field={@form[:adresse_livraison]} type="text" label="Adresse de livraison" required />
+            <.select field={@form[:headquarters_id]} label="Point de vente" options={headquarters_options(@current_group.id)} required />
+
+            <div class="relative">
+              <.autocomplete
+                name="adresse_livraison"
+                id="adresse-livraison-autocomplete"
+                label="Adresse de livraison"
+                options={@address_suggestions}
+                selected={Phoenix.HTML.Form.input_value(@form, :adresse_livraison)}
+                on_search="search_address"
+                on_select="select_address"
+                search_placeholder="Commencez à taper une adresse..."
+                no_results_message="Aucune adresse trouvée"
+                phx-target={@myself}
+                required
+              />
+            </div>
+
             <.input field={@form[:date_livraison_prevue]} type="datetime-local" label="Date de livraison prévue" />
             <.select field={@form[:status]} type="select" label="Statut" options={status_options()} required />
 
-            <div class="grid grid-cols-2 gap-4">
-              <.input field={@form[:latitude_livraison]} type="number" label="Latitude" step="any" />
-              <.input field={@form[:longitude_livraison]} type="number" label="Longitude" step="any" />
+            <div class="hidden">
+              <.input field={@form[:latitude_livraison]} type="number" step="any" />
+              <.input field={@form[:longitude_livraison]} type="number" step="any" />
             </div>
           </div>
         </div>
@@ -199,6 +216,83 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
 
   def handle_event("save", %{"order" => order_params}, socket) do
     save_order(socket, socket.assigns.action, order_params)
+  end
+
+  def handle_event("search_address", %{"query" => query}, socket) when byte_size(query) > 2 do
+    # Coordonnées de Grenoble pour centrer la recherche
+    lat = 45.1885
+    lon = 5.7245
+
+    case search_address(query, lat, lon) do
+      {:ok, suggestions} ->
+        # Créer un map de lookup pour stocker les données complètes
+        address_data = Enum.reduce(suggestions, %{}, fn feature, acc ->
+          coords = feature["geometry"]["coordinates"]
+          label = feature["properties"]["label"]
+          data = %{
+            label: label,
+            lat: Enum.at(coords, 1), # Latitude est le second élément
+            lon: Enum.at(coords, 0)  # Longitude est le premier élément
+          }
+
+          # Utiliser le label comme clé pour retrouver les données plus tard
+          Map.put(acc, label, data)
+        end)
+
+        # Pour les options, utiliser seulement {label, label}
+        address_suggestions = Enum.map(address_data, fn {label, _} -> {label, label} end)
+
+        {:noreply,
+          socket
+          |> assign(:address_suggestions, address_suggestions)
+          |> assign(:address_data, address_data)}
+
+      _error ->
+        {:noreply, assign(socket, :address_suggestions, [])}
+    end
+  end
+
+  def handle_event("search_address", _params, socket) do
+    {:noreply, assign(socket, :address_suggestions, [])}
+  end
+
+  def handle_event("select_address", %{"value" => selected_label}, socket) do
+    # Récupérer les données complètes depuis notre map de lookup
+    case Map.get(socket.assigns.address_data, selected_label) do
+      nil ->
+        {:noreply, socket}
+
+      address_info ->
+        {:noreply,
+         socket
+         |> update(:form, fn form ->
+           params = %{
+             "adresse_livraison" => address_info.label,
+             "latitude_livraison" => address_info.lat,
+             "longitude_livraison" => address_info.lon
+           }
+           Phoenix.Component.to_form(Phoenix.HTML.Form.update_values(form.source, params))
+         end)}
+    end
+  end
+
+  defp search_address(query, lat, lon) do
+    url = "https://api-adresse.data.gouv.fr/search/"
+    params = %{
+      q: query,
+      lat: lat,
+      lon: lon,
+      limit: 5
+    }
+
+    case HTTPoison.get(url, [], params: params) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        case Jason.decode(body) do
+          {:ok, %{"features" => features}} -> {:ok, features}
+          _ -> {:error, :invalid_json}
+        end
+      _ -> {:error, :request_failed}
+    end
   end
 
   defp save_order(socket, :edit, order_params) do

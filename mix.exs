@@ -60,7 +60,8 @@ defmodule SoSinple.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
       {:number, "~> 1.0"},
-      {:fluxon, "~> 1.0.10", repo: :fluxon}
+      {:fluxon, "~> 1.0.10", repo: :fluxon},
+      {:httpoison, "~> 2.0"}
     ]
   end
 
