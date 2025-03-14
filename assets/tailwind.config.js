@@ -9,7 +9,8 @@ module.exports = {
   content: [
     "./js/**/*.js",
     "../lib/so_sinple_web.ex",
-    "../lib/so_sinple_web/**/*.*ex"
+    "../lib/so_sinple_web/**/*.*ex",
+    "../deps/fluxon/**/*.*ex"
   ],
   theme: {
     extend: {

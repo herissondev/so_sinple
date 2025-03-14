@@ -7,11 +7,6 @@ defmodule SoSinpleWeb.GroupLive.FormComponent do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        {@title}
-        <:subtitle>Use this form to manage group records in your database.</:subtitle>
-      </.header>
-
       <.simple_form
         for={@form}
         id="group-form"
@@ -47,6 +42,13 @@ defmodule SoSinpleWeb.GroupLive.FormComponent do
   end
 
   def handle_event("save", %{"group" => group_params}, socket) do
+    # Add the admin_id if it's a new group
+    group_params = if socket.assigns.action == :new do
+      Map.put(group_params, "admin_id", socket.assigns.current_user.id)
+    else
+      group_params
+    end
+
     save_group(socket, socket.assigns.action, group_params)
   end
 
@@ -58,7 +60,7 @@ defmodule SoSinpleWeb.GroupLive.FormComponent do
         {:noreply,
          socket
          |> put_flash(:info, "Group updated successfully")
-         |> push_patch(to: socket.assigns.patch)}
+         |> push_navigate(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -66,9 +68,6 @@ defmodule SoSinpleWeb.GroupLive.FormComponent do
   end
 
   defp save_group(socket, :new, group_params) do
-    # Ajouter l'ID de l'utilisateur connecté comme admin_id
-    group_params = Map.put(group_params, "admin_id", socket.assigns.current_user.id)
-
     case Organizations.create_group(group_params) do
       {:ok, group} ->
         notify_parent({:saved, group})
@@ -76,7 +75,7 @@ defmodule SoSinpleWeb.GroupLive.FormComponent do
         {:noreply,
          socket
          |> put_flash(:info, "Group created successfully")
-         |> push_patch(to: socket.assigns.patch)}
+         |> push_navigate(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}

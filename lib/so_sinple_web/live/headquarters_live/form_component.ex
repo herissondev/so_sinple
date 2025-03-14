@@ -7,11 +7,6 @@ defmodule SoSinpleWeb.HeadquartersLive.FormComponent do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        {@title}
-        <:subtitle>Headquarters for <%= @current_group.name %></:subtitle>
-      </.header>
-
       <.simple_form
         for={@form}
         id="headquarters-form"
@@ -64,7 +59,7 @@ defmodule SoSinpleWeb.HeadquartersLive.FormComponent do
         {:noreply,
          socket
          |> put_flash(:info, "Headquarters updated successfully")
-         |> push_patch(to: socket.assigns.patch)}
+         |> push_navigate(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -79,7 +74,7 @@ defmodule SoSinpleWeb.HeadquartersLive.FormComponent do
         {:noreply,
          socket
          |> put_flash(:info, "Headquarters created successfully")
-         |> push_patch(to: socket.assigns.patch)}
+         |> push_navigate(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}

@@ -2,6 +2,7 @@ defmodule SoSinpleWeb.GroupLive.Show do
   use SoSinpleWeb, :live_view
 
   alias SoSinple.Organizations
+  alias SoSinple.Inventory
 
   @impl true
   def mount(_params, _session, socket) do
@@ -12,6 +13,7 @@ defmodule SoSinpleWeb.GroupLive.Show do
   def handle_params(%{"group_id" => id}, _, socket) do
     group = Organizations.get_group_with_admin!(id)
     headquarters_list = Organizations.list_headquarters_by_group(id)
+    items_list = Inventory.list_items_by_group(id)
 
     # Vérifier si l'utilisateur est l'administrateur du groupe
     is_admin = group.admin_id == socket.assigns.current_user.id
@@ -21,6 +23,7 @@ defmodule SoSinpleWeb.GroupLive.Show do
      |> assign(:page_title, "Group: #{group.name}")
      |> assign(:group, group)
      |> assign(:headquarters_list, headquarters_list)
+     |> assign(:items_list, items_list)
      |> assign(:is_admin, is_admin)}
   end
 
@@ -53,7 +56,7 @@ defmodule SoSinpleWeb.GroupLive.Show do
     <.header class="mt-10">
       Headquarters
       <:actions>
-        <.link navigate={~p"/groups/#{@group.id}/headquarters/new"}>
+        <.link patch={~p"/groups/#{@group.id}/headquarters/new"}>
           <.button>New Headquarters</.button>
         </.link>
       </:actions>
@@ -65,17 +68,41 @@ defmodule SoSinpleWeb.GroupLive.Show do
         <p class="text-sm text-gray-400 mt-2">Create a new headquarters to get started.</p>
       </div>
     <% else %>
-      <.table id="headquarters" rows={@headquarters_list}>
-        <:col :let={hq} label="Name"><%= hq.name %></:col>
-        <:col :let={hq} label="Address"><%= hq.address %></:col>
-        <:col :let={hq} label="Phone"><%= hq.phone %></:col>
-        <:col :let={hq} label="Active"><%= hq.active %></:col>
-        <:action :let={hq}>
-          <.link navigate={~p"/groups/#{@group.id}/headquarters/#{hq.id}"}>View</.link>
-        </:action>
-        <:action :let={hq}>
-          <.link navigate={~p"/groups/#{@group.id}/headquarters/#{hq.id}/edit"}>Edit</.link>
-        </:action>
+      <.table>
+        <.table_head>
+          <:col>Name</:col>
+          <:col>Address</:col>
+          <:col>Phone</:col>
+          <:col>Status</:col>
+          <:col></:col>
+        </.table_head>
+        <.table_body>
+          <.table_row :for={hq <- @headquarters_list}>
+            <:cell class="w-full flex items-center gap-2">
+              <div class="flex flex-col gap-0.5">
+                <span class="font-semibold"><%= hq.name %></span>
+              </div>
+            </:cell>
+            <:cell><%= hq.address %></:cell>
+            <:cell><%= hq.phone %></:cell>
+            <:cell>
+              <%= if hq.active do %>
+                <.badge color="green">Active</.badge>
+              <% else %>
+                <.badge color="red">Inactive</.badge>
+              <% end %>
+            </:cell>
+            <:cell>
+              <.dropdown>
+                <:toggle class="size-6 cursor-pointer rounded-md flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <.icon name="hero-ellipsis-horizontal" class="size-5" />
+                </:toggle>
+                <.dropdown_link patch={~p"/groups/#{@group.id}/headquarters/#{hq.id}"}>View</.dropdown_link>
+                <.dropdown_link patch={~p"/groups/#{@group.id}/headquarters/#{hq.id}/edit"}>Edit</.dropdown_link>
+              </.dropdown>
+            </:cell>
+          </.table_row>
+        </.table_body>
       </.table>
     <% end %>
 
@@ -96,6 +123,14 @@ defmodule SoSinpleWeb.GroupLive.Show do
       </.link>
     </div>
 
+    <.header class="mt-10">
+      Items
+      <:actions>
+        <.link navigate={~p"/groups/#{@group.id}/items/"}>
+          <.button>Manage Items</.button>
+        </.link>
+      </:actions>
+    </.header>
     <.back navigate={~p"/groups"} class="mt-10">Back to groups</.back>
     """
   end

@@ -68,50 +68,60 @@ defmodule SoSinpleWeb.Router do
       on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated}, {SoSinpleWeb.UserAuth, :mount_current_user}] do
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
+    end
 
-      # Liste des groupes de l'utilisateur
+    live_session :default,
+      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
+                 {SoSinpleWeb.UserAuth, :mount_current_user}] do
       live "/groups", GroupLive.Index, :index
-      live "/groups/new", GroupLive.Index, :new
+      live "/groups/new", GroupLive.New, :new
     end
 
     # Routes pour un groupe spécifique
     live_session :group_access,
       on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
                  {SoSinpleWeb.UserAuth, :mount_current_user},
-                 {SoSinpleWeb.UserAuth, :check_group_access}] do
+                 {SoSinpleWeb.UserAuth, :check_group_access}],
+      layout: {SoSinpleWeb.Layouts, :dashboard} do
       live "/groups/:group_id", GroupLive.Show, :show
       live "/groups/:group_id/edit", GroupLive.Edit, :edit
 
       # Liste des QG d'un groupe
       live "/groups/:group_id/headquarters", HeadquartersLive.Index, :index
-      live "/groups/:group_id/headquarters/new", HeadquartersLive.Index, :new
+      live "/groups/:group_id/headquarters/new", HeadquartersLive.New, :new
+      live "/groups/:group_id/headquarters/:headquarter_id/edit", HeadquartersLive.Edit, :edit
+
+      # Liste des items d'un groupe
+      live "/groups/:group_id/items", ItemLive.Index, :index
+      live "/groups/:group_id/items/new", ItemLive.New, :new
+      live "/groups/:group_id/items/:id/edit", ItemLive.Edit, :edit
+
+      # Routes pour les rôles utilisateurs d'un groupe
+      live "/groups/:group_id/user_roles", UserRoleLive.Index, :index
+      live "/groups/:group_id/user_roles/new", UserRoleLive.New, :new
+      live "/groups/:group_id/user_roles/:user_role_id/edit", UserRoleLive.Edit, :edit
+      live "/groups/:group_id/user_roles/:user_role_id", UserRoleLive.Show, :show
     end
 
     # Routes pour un QG spécifique
     live_session :headquarters_access,
       on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
                  {SoSinpleWeb.UserAuth, :mount_current_user},
-                 {SoSinpleWeb.UserAuth, :check_headquarters_access}] do
-      live "/groups/:group_id/headquarters/:headquarters_id", HeadquartersLive.Show, :show
-      live "/groups/:group_id/headquarters/:headquarters_id/edit", HeadquartersLive.Show, :edit
-    end
+                 {SoSinpleWeb.UserAuth, :check_headquarters_access}],
+      layout: {SoSinpleWeb.Layouts, :dashboard} do
+      live "/groups/:group_id/headquarters/:headquarter_id", HeadquartersLive.Show, :show
 
-    # Routes pour les rôles utilisateurs d'un groupe
-    live_session :user_roles_access,
-      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
-                 {SoSinpleWeb.UserAuth, :mount_current_user},
-                 {SoSinpleWeb.UserAuth, :check_user_roles_access}] do
-      live "/groups/:group_id/user_roles", UserRoleLive.Index, :index
-      live "/groups/:group_id/user_roles/new", UserRoleLive.Index, :new
-    end
+      # Liste des stocks d'un QG
+      live "/groups/:group_id/headquarters/:headquarter_id/stock_items", StockItemLive.Index, :index
+      live "/groups/:group_id/headquarters/:headquarter_id/stock_items/new", StockItemLive.New, :new
+      live "/groups/:group_id/headquarters/:headquarter_id/stock_items/:stock_item_id/edit", StockItemLive.Edit, :edit
+      live "/groups/:group_id/headquarters/:headquarter_id/stock_items/:stock_item_id", StockItemLive.Show, :show
 
-    # Routes pour un rôle utilisateur spécifique
-    live_session :user_role_access,
-      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
-                 {SoSinpleWeb.UserAuth, :mount_current_user},
-                 {SoSinpleWeb.UserAuth, :check_user_role_access}] do
-      live "/groups/:group_id/user_roles/:user_role_id", UserRoleLive.Show, :show
-      live "/groups/:group_id/user_roles/:user_role_id/edit", UserRoleLive.Show, :edit
+      # Gestion des commandes d'un QG
+      live "/groups/:group_id/headquarters/:headquarter_id/orders", OrderLive.Index, :index
+      live "/groups/:group_id/headquarters/:headquarter_id/orders/new", OrderLive.New, :new
+      live "/groups/:group_id/headquarters/:headquarter_id/orders/:id/edit", OrderLive.Edit, :edit
+      live "/groups/:group_id/headquarters/:headquarter_id/orders/:id", OrderLive.Show, :show
     end
   end
 

@@ -4,44 +4,39 @@ defmodule SoSinpleWeb.GroupLive.Edit do
   alias SoSinple.Organizations
 
   @impl true
-  def mount(_params, _session, socket) do
-    {:ok, socket}
+  def mount(%{"group_id" => id}, _session, socket) do
+    group = Organizations.get_group!(id)
+
+    # Check if the current user is the admin of the group
+    if group.admin_id == socket.assigns.current_user.id do
+      {:ok, socket}
+    else
+      {:ok,
+       socket
+       |> put_flash(:error, "You can only edit groups you administer")
+       |> redirect(to: ~p"/groups")}
+    end
   end
 
   @impl true
-  def handle_params(%{"group_id" => id}, _, socket) do
-    group = Organizations.get_group_with_admin!(id)
-
-    # Vérifier si l'utilisateur est l'administrateur du groupe
-    can_edit = group.admin_id == socket.assigns.current_user.id
+  def handle_params(%{"group_id" => id}, _url, socket) do
+    group = Organizations.get_group!(id)
 
     {:noreply,
      socket
-     |> assign(:page_title, "Edit Group")
-     |> assign(:group, group)
-     |> assign(:can_edit, can_edit)}
+     |> assign(:page_title, "Edit Group - #{group.name}")
+     |> assign(:group, group)}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <.header>
-      Edit Group
-      <:subtitle>
-        <%= if @can_edit do %>
-          You can edit this group as you are the administrator.
-        <% else %>
-          You can view but not edit this group as you are not the administrator.
-        <% end %>
-      </:subtitle>
-      <:actions>
-        <.link navigate={~p"/groups/#{@group.id}"}>
-          <.button>Back to Group</.button>
-        </.link>
-      </:actions>
-    </.header>
+    <div>
+      <.header>
+        Edit Group
+        <:subtitle>Update your group settings</:subtitle>
+      </.header>
 
-    <%= if @can_edit do %>
       <.live_component
         module={SoSinpleWeb.GroupLive.FormComponent}
         id={@group.id}
@@ -49,26 +44,19 @@ defmodule SoSinpleWeb.GroupLive.Edit do
         action={:edit}
         group={@group}
         current_user={@current_user}
-        patch={~p"/groups/#{@group.id}"}
+        patch={~p"/groups"}
       />
-    <% else %>
-      <div class="alert alert-warning">
-        <p>You do not have permission to edit this group. Only the group administrator can edit it.</p>
-      </div>
 
-      <.list>
-        <:item title="Name"><%= @group.name %></:item>
-        <:item title="Description"><%= @group.description %></:item>
-        <:item title="Active"><%= @group.active %></:item>
-        <:item title="Administrator">
-          <%= if @group.admin do %>
-            <%= @group.admin.email %>
-          <% else %>
-            No administrator assigned
-          <% end %>
-        </:item>
-      </.list>
-    <% end %>
+      <.back navigate={~p"/groups"} class="mt-6">Back to groups</.back>
+    </div>
     """
+  end
+
+  @impl true
+  def handle_info({SoSinpleWeb.GroupLive.FormComponent, {:saved, _group}}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:info, "Group updated successfully")
+     |> push_navigate(to: ~p"/groups")}
   end
 end

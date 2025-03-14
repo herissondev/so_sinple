@@ -2,22 +2,26 @@ defmodule SoSinpleWeb.UserRoleLive.Show do
   use SoSinpleWeb, :live_view
 
   alias SoSinple.Organizations
+  alias SoSinple.Repo
 
   @impl true
-  def mount(_params, _session, socket) do
-    # Le groupe et le rôle utilisateur sont déjà assignés par le hook check_user_role_access
-    {:ok, socket}
+  def mount(%{"user_role_id" => id}, _session, socket) do
+    user_role = Organizations.get_user_role!(id) |> Repo.preload([:user])
+
+    # Check if the current user is the admin of the group
+    can_manage_roles = socket.assigns.current_group.admin_id == socket.assigns.current_user.id
+
+    {:ok,
+     socket
+     |> assign(:user_role, user_role)
+     |> assign(:can_manage_roles, can_manage_roles)}
   end
 
   @impl true
-  def handle_params(%{"group_id" => _group_id, "user_role_id" => user_role_id}, _, socket) do
-    # Précharger les associations
-    user_role = Organizations.get_user_role_with_associations!(user_role_id)
-
+  def handle_params(%{"user_role_id" => id}, _url, socket) do
     {:noreply,
      socket
-     |> assign(:page_title, "User Role Details")
-     |> assign(:user_role, user_role)}
+     |> assign(:page_title, "User Role Details")}
   end
 
   @impl true
@@ -25,43 +29,30 @@ defmodule SoSinpleWeb.UserRoleLive.Show do
     ~H"""
     <.header>
       User Role Details
-      <:subtitle>Role information for <%= @current_group.name %></:subtitle>
+      <:subtitle>Member information for <%= @current_group.name %></:subtitle>
       <:actions>
         <%= if @can_manage_roles do %>
-          <.link patch={~p"/groups/#{@current_group.id}/user_roles/#{@user_role.id}/edit"} phx-click={JS.push_focus()}>
-            <.button>Edit user role</.button>
+          <.link navigate={~p"/groups/#{@current_group.id}/user_roles/#{@user_role.id}/edit"}>
+            <.button>Edit</.button>
           </.link>
         <% end %>
       </:actions>
     </.header>
 
     <.list>
-      <:item title="User">
-        <%= if @user_role.user, do: @user_role.user.email, else: "Unknown" %>
+      <:item title="User"><%= if @user_role.user, do: @user_role.user.email, else: "Unknown" %></:item>
+      <:item title="Role"><%= String.capitalize(@user_role.role) %></:item>
+      <:item title="Status">
+        <%= if @user_role.active do %>
+          <.badge color="green">Active</.badge>
+        <% else %>
+          <.badge color="red">Inactive</.badge>
+        <% end %>
       </:item>
-      <:item title="Role"><%= @user_role.role %></:item>
-      <:item title="Group"><%= @current_group.name %></:item>
-      <:item title="Headquarters">
-        <%= if @user_role.headquarters, do: @user_role.headquarters.name, else: "N/A" %>
-      </:item>
-      <:item title="Active"><%= @user_role.active %></:item>
+      <:item title="Added On"><%= Calendar.strftime(@user_role.inserted_at, "%d %b %Y, %H:%M") %></:item>
     </.list>
 
-    <.back navigate={~p"/groups/#{@current_group.id}/user_roles"} class="mt-10">Back to user roles</.back>
-
-    <.modal :if={@live_action == :edit} id="user_role-modal" show on_cancel={JS.patch(~p"/groups/#{@current_group.id}/user_roles/#{@user_role.id}")}>
-      <.live_component
-        module={SoSinpleWeb.UserRoleLive.FormComponent}
-        id={@user_role.id}
-        title={@page_title}
-        action={@live_action}
-        user_role={@user_role}
-        current_group={@current_group}
-        current_user={@current_user}
-        can_manage_roles={@can_manage_roles}
-        patch={~p"/groups/#{@current_group.id}/user_roles/#{@user_role.id}"}
-      />
-    </.modal>
+    <.back navigate={~p"/groups/#{@current_group.id}/user_roles"} class="mt-6">Back to user roles</.back>
     """
   end
 end

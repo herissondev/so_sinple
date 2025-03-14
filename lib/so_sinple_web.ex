@@ -87,6 +87,10 @@ defmodule SoSinpleWeb do
 
       # HTML escaping functionality
       import Phoenix.HTML
+
+      # Fluxon
+      use Fluxon
+
       # Core UI components
       import SoSinpleWeb.CoreComponents
 

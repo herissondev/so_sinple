@@ -3,16 +3,20 @@ defmodule SoSinpleWeb.UserRoleLive.Index do
 
   alias SoSinple.Organizations
   alias SoSinple.Organizations.UserRole
-  alias SoSinple.Accounts
   alias SoSinple.Repo
 
   @impl true
   def mount(%{"group_id" => group_id}, _session, socket) do
-    # Le groupe est déjà assigné par le hook check_user_roles_access
     user_roles = Organizations.list_user_roles_by_group(group_id)
-    |> Repo.preload([:user, :headquarters])
+                 |> Repo.preload([:user])
 
-    {:ok, stream(socket, :user_roles, user_roles)}
+    # Check if the current user is the admin of the group
+    can_manage_roles = socket.assigns.current_group.admin_id == socket.assigns.current_user.id
+
+    {:ok,
+     socket
+     |> assign(:user_roles, user_roles)
+     |> assign(:can_manage_roles, can_manage_roles)}
   end
 
   @impl true
@@ -20,41 +24,37 @@ defmodule SoSinpleWeb.UserRoleLive.Index do
     {:noreply, apply_action(socket, socket.assigns.live_action, params)}
   end
 
-  defp apply_action(socket, :edit, %{"id" => id}) do
-    socket
-    |> assign(:page_title, "Edit User Role")
-    |> assign(:user_role, Organizations.get_user_role!(id))
-  end
-
-  defp apply_action(socket, :new, _params) do
-    socket
-    |> assign(:page_title, "New User Role")
-    |> assign(:user_role, %UserRole{group_id: socket.assigns.current_group.id})
-  end
-
   defp apply_action(socket, :index, _params) do
     socket
-    |> assign(:page_title, "User Roles for #{socket.assigns.current_group.name}")
+    |> assign(:page_title, "User Roles")
     |> assign(:user_role, nil)
   end
 
   @impl true
-  def handle_info({SoSinpleWeb.UserRoleLive.FormComponent, {:saved, user_role}}, socket) do
-    {:noreply, stream_insert(socket, :user_roles, user_role)}
+  def handle_info({SoSinpleWeb.UserRoleLive.FormComponent, {:saved, _user_role}}, socket) do
+    user_roles = Organizations.list_user_roles_by_group(socket.assigns.current_group.id)
+                 |> Repo.preload([:user])
+    {:noreply, assign(socket, :user_roles, user_roles)}
   end
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     user_role = Organizations.get_user_role!(id)
 
-    # Vérifier si l'utilisateur est l'administrateur du groupe
     if socket.assigns.can_manage_roles do
       {:ok, _} = Organizations.delete_user_role(user_role)
-      {:noreply, stream_delete(socket, :user_roles, user_role)}
+
+      user_roles = Organizations.list_user_roles_by_group(socket.assigns.current_group.id)
+                   |> Repo.preload([:user])
+
+      {:noreply,
+       socket
+       |> put_flash(:info, "User role deleted successfully")
+       |> assign(:user_roles, user_roles)}
     else
       {:noreply,
        socket
-       |> put_flash(:error, "Only the group administrator can delete user roles.")}
+       |> put_flash(:error, "Only the group administrator can delete user roles")}
     end
   end
 
@@ -65,68 +65,67 @@ defmodule SoSinpleWeb.UserRoleLive.Index do
       User Roles for <%= @current_group.name %>
       <:subtitle>
         <%= if @can_manage_roles do %>
-          You can manage user roles for this group.
+          Manage members and their roles in this group
         <% else %>
-          You can view but not modify user roles for this group.
+          View members and their roles in this group
         <% end %>
       </:subtitle>
       <:actions>
         <%= if @can_manage_roles do %>
-          <.link patch={~p"/groups/#{@current_group.id}/user_roles/new"}>
-            <.button>New User Role</.button>
+          <.link navigate={~p"/groups/#{@current_group.id}/user_roles/new"}>
+            <.button>Add Member</.button>
           </.link>
         <% end %>
       </:actions>
     </.header>
 
-    <.table
-      id="user_roles"
-      rows={@streams.user_roles}
-      row_click={fn {_id, user_role} -> JS.navigate(~p"/groups/#{@current_group.id}/user_roles/#{user_role.id}") end}
-    >
-      <:col :let={{_id, user_role}} label="User">
-        <%= if user_role.user, do: user_role.user.email, else: "Unknown" %>
-      </:col>
-      <:col :let={{_id, user_role}} label="Role"><%= user_role.role %></:col>
-      <:col :let={{_id, user_role}} label="Headquarters">
-        <%= if user_role.headquarters, do: user_role.headquarters.name, else: "N/A" %>
-      </:col>
-      <:col :let={{_id, user_role}} label="Active"><%= user_role.active %></:col>
-      <:action :let={{_id, user_role}}>
-        <div class="sr-only">
-          <.link navigate={~p"/groups/#{@current_group.id}/user_roles/#{user_role.id}"}>Show</.link>
-        </div>
-        <%= if @can_manage_roles do %>
-          <.link navigate={~p"/groups/#{@current_group.id}/user_roles/#{user_role.id}/edit"}>Edit</.link>
-        <% end %>
-      </:action>
-      <:action :let={{id, user_role}}>
-        <%= if @can_manage_roles do %>
-          <.link
-            phx-click={JS.push("delete", value: %{id: user_role.id}) |> hide("##{id}")}
-            data-confirm="Are you sure you want to delete this user role?"
-          >
-            Delete
-          </.link>
-        <% end %>
-      </:action>
+    <.table>
+      <.table_head>
+        <:col>User</:col>
+        <:col>Role</:col>
+        <:col>Status</:col>
+        <:col></:col>
+      </.table_head>
+      <.table_body>
+        <.table_row :for={user_role <- @user_roles}>
+          <:cell>
+            <div class="font-semibold"><%= if user_role.user, do: user_role.user.email, else: "Unknown" %></div>
+          </:cell>
+          <:cell>
+            <span class="text-zinc-400 text-sm/3"><%= String.capitalize(user_role.role) %></span>
+          </:cell>
+          <:cell>
+            <%= if user_role.active do %>
+              <.badge color="green">Active</.badge>
+            <% else %>
+              <.badge color="red">Inactive</.badge>
+            <% end %>
+          </:cell>
+          <:cell>
+            <%= if @can_manage_roles do %>
+              <.dropdown>
+                <:toggle class="size-6 cursor-pointer rounded-md flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <.icon name="hero-ellipsis-horizontal" class="size-5" />
+                </:toggle>
+                <.dropdown_link navigate={~p"/groups/#{@current_group.id}/user_roles/#{user_role.id}"}>
+                  View
+                </.dropdown_link>
+                <.dropdown_link navigate={~p"/groups/#{@current_group.id}/user_roles/#{user_role.id}/edit"}>
+                  Edit
+                </.dropdown_link>
+                <.dropdown_link
+                  phx-click={JS.push("delete", value: %{id: user_role.id})}
+                  data-confirm="Are you sure you want to remove this member?">
+                  Delete
+                </.dropdown_link>
+              </.dropdown>
+            <% end %>
+          </:cell>
+        </.table_row>
+      </.table_body>
     </.table>
 
     <.back navigate={~p"/groups/#{@current_group.id}"} class="mt-6">Back to group</.back>
-
-    <.modal :if={@live_action in [:new, :edit]} id="user_role-modal" show on_cancel={JS.patch(~p"/groups/#{@current_group.id}/user_roles")}>
-      <.live_component
-        module={SoSinpleWeb.UserRoleLive.FormComponent}
-        id={@user_role.id || :new}
-        title={@page_title}
-        action={@live_action}
-        user_role={@user_role}
-        current_group={@current_group}
-        current_user={@current_user}
-        can_manage_roles={@can_manage_roles}
-        patch={~p"/groups/#{@current_group.id}/user_roles"}
-      />
-    </.modal>
     """
   end
 end

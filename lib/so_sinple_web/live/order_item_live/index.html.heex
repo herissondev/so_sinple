@@ -1,0 +1,43 @@
+<.header>
+  Listing Order items
+  <:actions>
+    <.link patch={~p"/order_items/new"}>
+      <.button>New Order item</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="order_items"
+  rows={@streams.order_items}
+  row_click={fn {_id, order_item} -> JS.navigate(~p"/order_items/#{order_item}") end}
+>
+  <:col :let={{_id, order_item}} label="Quantite">{order_item.quantite}</:col>
+  <:col :let={{_id, order_item}} label="Prix unitaire">{order_item.prix_unitaire}</:col>
+  <:col :let={{_id, order_item}} label="Notes speciales">{order_item.notes_speciales}</:col>
+  <:action :let={{_id, order_item}}>
+    <div class="sr-only">
+      <.link navigate={~p"/order_items/#{order_item}"}>Show</.link>
+    </div>
+    <.link patch={~p"/order_items/#{order_item}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, order_item}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: order_item.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="order_item-modal" show on_cancel={JS.patch(~p"/order_items")}>
+  <.live_component
+    module={SoSinpleWeb.OrderItemLive.FormComponent}
+    id={@order_item.id || :new}
+    title={@page_title}
+    action={@live_action}
+    order_item={@order_item}
+    patch={~p"/order_items"}
+  />
+</.modal>

@@ -1,0 +1,37 @@
+<.header>
+  Order {@order.id}
+  <:subtitle>This is a order record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/orders/#{@order}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit order</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Date creation">{@order.date_creation}</:item>
+  <:item title="Date livraison prevue">{@order.date_livraison_prevue}</:item>
+  <:item title="Status">{@order.status}</:item>
+  <:item title="Client nom">{@order.client_nom}</:item>
+  <:item title="Client prenom">{@order.client_prenom}</:item>
+  <:item title="Client adresse">{@order.client_adresse}</:item>
+  <:item title="Client telephone">{@order.client_telephone}</:item>
+  <:item title="Prix total">{@order.prix_total}</:item>
+  <:item title="Adresse livraison">{@order.adresse_livraison}</:item>
+  <:item title="Latitude livraison">{@order.latitude_livraison}</:item>
+  <:item title="Longitude livraison">{@order.longitude_livraison}</:item>
+  <:item title="Notes">{@order.notes}</:item>
+</.list>
+
+<.back navigate={~p"/orders"}>Back to orders</.back>
+
+<.modal :if={@live_action == :edit} id="order-modal" show on_cancel={JS.patch(~p"/orders/#{@order}")}>
+  <.live_component
+    module={SoSinpleWeb.OrderLive.FormComponent}
+    id={@order.id}
+    title={@page_title}
+    action={@live_action}
+    order={@order}
+    patch={~p"/orders/#{@order}"}
+  />
+</.modal>

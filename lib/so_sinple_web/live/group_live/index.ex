@@ -6,9 +6,8 @@ defmodule SoSinpleWeb.GroupLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    # Récupérer uniquement les groupes de l'utilisateur connecté
-    user_groups = Organizations.list_user_groups(socket.assigns.current_user.id)
-    {:ok, stream(socket, :groups, user_groups)}
+    groups = Organizations.list_user_groups(socket.assigns.current_user.id)
+    {:ok, assign(socket, :groups, groups)}
   end
 
   @impl true
@@ -35,22 +34,26 @@ defmodule SoSinpleWeb.GroupLive.Index do
   end
 
   @impl true
-  def handle_info({SoSinpleWeb.GroupLive.FormComponent, {:saved, group}}, socket) do
-    {:noreply, stream_insert(socket, :groups, group)}
+  def handle_info({SoSinpleWeb.GroupLive.FormComponent, {:saved, _group}}, socket) do
+    groups = Organizations.list_user_groups(socket.assigns.current_user.id)
+    {:noreply, assign(socket, :groups, groups)}
   end
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     group = Organizations.get_group!(id)
 
-    # Vérifier si l'utilisateur est l'administrateur du groupe
     if group.admin_id == socket.assigns.current_user.id do
       {:ok, _} = Organizations.delete_group(group)
-      {:noreply, stream_delete(socket, :groups, group)}
+
+      {:noreply,
+       socket
+       |> put_flash(:info, "Group deleted successfully")
+       |> assign(:groups, Organizations.list_user_groups(socket.assigns.current_user.id))}
     else
       {:noreply,
        socket
-       |> put_flash(:error, "Only the group administrator can delete a group.")}
+       |> put_flash(:error, "You can only delete groups you administer")}
     end
   end
 
@@ -59,44 +62,58 @@ defmodule SoSinpleWeb.GroupLive.Index do
     ~H"""
     <.header>
       My Groups
+      <:subtitle>Manage your groups and their resources</:subtitle>
       <:actions>
-        <.link patch={~p"/groups/new"}>
+        <.link navigate={~p"/groups/new"}>
           <.button>New Group</.button>
         </.link>
       </:actions>
     </.header>
 
-    <.table
-      id="groups"
-      rows={@streams.groups}
-      row_click={fn {_id, group} -> JS.navigate(~p"/groups/#{group.id}") end}
-    >
-      <:col :let={{_id, group}} label="Name"><%= group.name %></:col>
-      <:col :let={{_id, group}} label="Description"><%= group.description %></:col>
-      <:col :let={{_id, group}} label="Active"><%= group.active %></:col>
-      <:col :let={{_id, group}} label="Role">
-        <%= if group.admin_id == @current_user.id do %>
-          Administrator
-        <% else %>
-          Member
-        <% end %>
-      </:col>
-      <:action :let={{_id, group}}>
-        <div class="sr-only">
-          <.link navigate={~p"/groups/#{group.id}"}>Show</.link>
-        </div>
-        <.link patch={~p"/groups/#{group.id}/edit"}>Edit</.link>
-      </:action>
-      <:action :let={{id, group}}>
-        <%= if group.admin_id == @current_user.id do %>
-          <.link
-            phx-click={JS.push("delete", value: %{id: group.id}) |> hide("##{id}")}
-            data-confirm="Are you sure? This will delete the group and all associated data."
-          >
-            Delete
-          </.link>
-        <% end %>
-      </:action>
+    <.table>
+      <.table_head>
+        <:col>Group</:col>
+        <:col>Description</:col>
+        <:col>Role</:col>
+        <:col></:col>
+      </.table_head>
+      <.table_body>
+        <.table_row :for={group <- @groups}>
+          <:cell>
+            <div class="font-semibold"><%= group.name %></div>
+          </:cell>
+          <:cell>
+            <span class="text-zinc-400 text-sm/3"><%= group.description %></span>
+          </:cell>
+          <:cell>
+            <%= if group.admin_id == @current_user.id do %>
+              <.badge color="green">Admin</.badge>
+            <% else %>
+              <.badge color="blue">Member</.badge>
+            <% end %>
+          </:cell>
+          <:cell>
+            <.dropdown>
+              <:toggle class="size-6 cursor-pointer rounded-md flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                <.icon name="hero-ellipsis-horizontal" class="size-5" />
+              </:toggle>
+              <.dropdown_link navigate={~p"/groups/#{group.id}"}>
+                View
+              </.dropdown_link>
+              <%= if group.admin_id == @current_user.id do %>
+                <.dropdown_link navigate={~p"/groups/#{group.id}/edit"}>
+                  Edit
+                </.dropdown_link>
+                <.dropdown_link
+                  phx-click={JS.push("delete", value: %{id: group.id})}
+                  data-confirm="Are you sure you want to delete this group?">
+                  Delete
+                </.dropdown_link>
+              <% end %>
+            </.dropdown>
+          </:cell>
+        </.table_row>
+      </.table_body>
     </.table>
 
     <.modal :if={@live_action in [:new, :edit]} id="group-modal" show on_cancel={JS.patch(~p"/groups")}>

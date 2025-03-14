@@ -1,0 +1,28 @@
+<.header>
+  Order item {@order_item.id}
+  <:subtitle>This is a order_item record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/order_items/#{@order_item}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit order_item</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Quantite">{@order_item.quantite}</:item>
+  <:item title="Prix unitaire">{@order_item.prix_unitaire}</:item>
+  <:item title="Notes speciales">{@order_item.notes_speciales}</:item>
+</.list>
+
+<.back navigate={~p"/order_items"}>Back to order_items</.back>
+
+<.modal :if={@live_action == :edit} id="order_item-modal" show on_cancel={JS.patch(~p"/order_items/#{@order_item}")}>
+  <.live_component
+    module={SoSinpleWeb.OrderItemLive.FormComponent}
+    id={@order_item.id}
+    title={@page_title}
+    action={@live_action}
+    order_item={@order_item}
+    patch={~p"/order_items/#{@order_item}"}
+  />
+</.modal>

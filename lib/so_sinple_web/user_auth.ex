@@ -6,6 +6,8 @@ defmodule SoSinpleWeb.UserAuth do
 
   alias SoSinple.Accounts
   alias SoSinple.Organizations
+  alias SoSinple.Inventory
+  alias SoSinple.Repo
 
   # Make the remember me cookie valid for 60 days.
   # If you want bump or reduce this value, also change
@@ -177,7 +179,7 @@ defmodule SoSinpleWeb.UserAuth do
 
   def on_mount(:check_group_access, %{"group_id" => group_id}, _session, socket) do
     if can_access_group?(socket.assigns.current_user, group_id) do
-      group = Organizations.get_group!(group_id)
+      group = Organizations.get_group!(group_id) |> Repo.preload(:headquarters)
       {:cont, Phoenix.Component.assign(socket, :current_group, group)}
     else
       socket =
@@ -202,10 +204,10 @@ defmodule SoSinpleWeb.UserAuth do
   Vérifie si l'utilisateur a accès au QG spécifié.
   L'utilisateur doit avoir un rôle dans le groupe auquel appartient le QG.
   """
-  def on_mount(:check_headquarters_access, %{"group_id" => group_id, "headquarters_id" => headquarters_id}, _session, socket) do
+  def on_mount(:check_headquarters_access, %{"group_id" => group_id, "headquarter_id" => headquarter_id}, _session, socket) do
     if can_access_group?(socket.assigns.current_user, group_id) do
-      group = Organizations.get_group!(group_id)
-      headquarters = Organizations.get_headquarters!(headquarters_id)
+      group = Organizations.get_group!(group_id) |> Repo.preload(:headquarters)
+      headquarters = Organizations.get_headquarters!(headquarter_id)
 
       if headquarters.group_id == String.to_integer(group_id) do
         {:cont,
@@ -236,7 +238,7 @@ defmodule SoSinpleWeb.UserAuth do
   """
   def on_mount(:check_user_roles_access, %{"group_id" => group_id}, _session, socket) do
     if can_access_group?(socket.assigns.current_user, group_id) do
-      group = Organizations.get_group!(group_id)
+      group = Organizations.get_group!(group_id) |> Repo.preload(:headquarters)
       can_manage = Organizations.can_manage_roles?(socket.assigns.current_user.id, group_id)
 
       {:cont,
@@ -259,7 +261,7 @@ defmodule SoSinpleWeb.UserAuth do
   """
   def on_mount(:check_user_role_access, %{"group_id" => group_id, "user_role_id" => user_role_id}, _session, socket) do
     if can_access_group?(socket.assigns.current_user, group_id) do
-      group = Organizations.get_group!(group_id)
+      group = Organizations.get_group!(group_id) |> Repo.preload(:headquarters)
       user_role = Organizations.get_user_role!(user_role_id)
 
       if user_role.group_id == String.to_integer(group_id) do
@@ -288,10 +290,76 @@ defmodule SoSinpleWeb.UserAuth do
     end
   end
 
+  @doc """
+  Vérifie si l'utilisateur a accès à un item spécifique.
+  L'utilisateur doit avoir un rôle dans le groupe auquel appartient l'item.
+  """
+  def on_mount(:check_item_access, %{"group_id" => group_id, "item_id" => item_id}, _session, socket) do
+    if can_access_group?(socket.assigns.current_user, group_id) do
+      group = Organizations.get_group!(group_id) |> Repo.preload(:headquarters)
+      item = Inventory.get_item!(item_id)
+
+      if item.group_id == String.to_integer(group_id) do
+        {:cont,
+         socket
+         |> Phoenix.Component.assign(:current_group, group)
+         |> Phoenix.Component.assign(:current_item, item)}
+      else
+        socket =
+          socket
+          |> Phoenix.LiveView.put_flash(:error, "This item does not belong to the specified group.")
+          |> Phoenix.LiveView.redirect(to: ~p"/groups/#{group_id}/items")
+
+        {:halt, socket}
+      end
+    else
+      socket =
+        socket
+        |> Phoenix.LiveView.put_flash(:error, "You don't have access to this group.")
+        |> Phoenix.LiveView.redirect(to: ~p"/groups")
+
+      {:halt, socket}
+    end
+  end
+
+  @doc """
+  Vérifie si l'utilisateur a accès à un stock spécifique.
+  L'utilisateur doit avoir un rôle dans le groupe auquel appartient le QG du stock.
+  """
+  def on_mount(:check_stock_item_access, %{"group_id" => group_id, "headquarter_id" => headquarter_id, "stock_item_id" => stock_item_id}, _session, socket) do
+    if can_access_group?(socket.assigns.current_user, group_id) do
+      group = Organizations.get_group!(group_id) |> Repo.preload(:headquarters)
+      headquarters = Organizations.get_headquarters!(headquarter_id)
+      stock_item = Inventory.get_stock_item!(stock_item_id)
+
+      if headquarters.group_id == String.to_integer(group_id) && stock_item.headquarters_id == String.to_integer(headquarter_id) do
+        {:cont,
+         socket
+         |> Phoenix.Component.assign(:current_group, group)
+         |> Phoenix.Component.assign(:current_headquarters, headquarters)
+         |> Phoenix.Component.assign(:current_stock_item, stock_item)}
+      else
+        socket =
+          socket
+          |> Phoenix.LiveView.put_flash(:error, "This stock item does not belong to the specified headquarters.")
+          |> Phoenix.LiveView.redirect(to: ~p"/groups/#{group_id}/headquarters/#{headquarter_id}/stock_items")
+
+        {:halt, socket}
+      end
+    else
+      socket =
+        socket
+        |> Phoenix.LiveView.put_flash(:error, "You don't have access to this group.")
+        |> Phoenix.LiveView.redirect(to: ~p"/groups")
+
+      {:halt, socket}
+    end
+  end
+
   defp can_access_group?(user, group_id) do
     group_id = if is_binary(group_id), do: String.to_integer(group_id), else: group_id
 
-    group = Organizations.get_group!(group_id)
+    group = Organizations.get_group!(group_id) |> Repo.preload(:headquarters)
     is_admin = group.admin_id == user.id
 
     has_role = Organizations.list_user_roles_by_user(user.id)

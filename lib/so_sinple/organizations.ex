@@ -456,4 +456,32 @@ defmodule SoSinple.Organizations do
     group = get_group!(group_id)
     group.admin_id == user_id
   end
+
+  @doc """
+  Checks if a user is a manager of a specific headquarters.
+  Returns true if the user has an active role of "responsable_qg" for the headquarters.
+  """
+  def is_headquarters_manager?(user_id, headquarters_id) when is_integer(user_id) do
+    UserRole
+    |> where([ur], ur.user_id == ^user_id)
+    |> where([ur], ur.headquarters_id == ^headquarters_id)
+    |> where([ur], ur.role == "responsable_qg")
+    |> where([ur], ur.active == true)
+    |> Repo.exists?()
+  end
+
+  def is_headquarters_manager?(user_id, headquarters_id) when is_binary(headquarters_id) do
+    case Integer.parse(headquarters_id) do
+      {id, ""} -> is_headquarters_manager?(user_id, id)
+      _ -> false
+    end
+  end
+
+  @doc """
+  Checks if a user is admin of a group.
+  """
+  def is_group_admin?(user_id, group_id) do
+    group = get_group!(group_id)
+    group.admin_id == user_id
+  end
 end

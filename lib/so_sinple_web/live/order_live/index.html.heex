@@ -1,0 +1,52 @@
+<.header>
+  Listing Orders
+  <:actions>
+    <.link patch={~p"/orders/new"}>
+      <.button>New Order</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="orders"
+  rows={@streams.orders}
+  row_click={fn {_id, order} -> JS.navigate(~p"/orders/#{order}") end}
+>
+  <:col :let={{_id, order}} label="Date creation">{order.date_creation}</:col>
+  <:col :let={{_id, order}} label="Date livraison prevue">{order.date_livraison_prevue}</:col>
+  <:col :let={{_id, order}} label="Status">{order.status}</:col>
+  <:col :let={{_id, order}} label="Client nom">{order.client_nom}</:col>
+  <:col :let={{_id, order}} label="Client prenom">{order.client_prenom}</:col>
+  <:col :let={{_id, order}} label="Client adresse">{order.client_adresse}</:col>
+  <:col :let={{_id, order}} label="Client telephone">{order.client_telephone}</:col>
+  <:col :let={{_id, order}} label="Prix total">{order.prix_total}</:col>
+  <:col :let={{_id, order}} label="Adresse livraison">{order.adresse_livraison}</:col>
+  <:col :let={{_id, order}} label="Latitude livraison">{order.latitude_livraison}</:col>
+  <:col :let={{_id, order}} label="Longitude livraison">{order.longitude_livraison}</:col>
+  <:col :let={{_id, order}} label="Notes">{order.notes}</:col>
+  <:action :let={{_id, order}}>
+    <div class="sr-only">
+      <.link navigate={~p"/orders/#{order}"}>Show</.link>
+    </div>
+    <.link patch={~p"/orders/#{order}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, order}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: order.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="order-modal" show on_cancel={JS.patch(~p"/orders")}>
+  <.live_component
+    module={SoSinpleWeb.OrderLive.FormComponent}
+    id={@order.id || :new}
+    title={@page_title}
+    action={@live_action}
+    order={@order}
+    patch={~p"/orders"}
+  />
+</.modal>
