@@ -1,4 +1,4 @@
-# SoSinple
+# So sINPle
 
 Plateforme intelligente de gestion de livraison multi-sites développée lors du HACKATHON MARGO x ENSIMAG pour les SOS des listes BDE des INP
 
