@@ -29,10 +29,6 @@ defmodule SoSinpleWeb.StockItemLive.Edit do
   @impl true
   def render(assigns) do
     ~H"""
-    <.header>
-      Edit Stock Item
-      <:subtitle>Update stock information for <%= @stock_item.item.name %></:subtitle>
-    </.header>
 
     <.live_component
       module={SoSinpleWeb.StockItemLive.FormComponent}

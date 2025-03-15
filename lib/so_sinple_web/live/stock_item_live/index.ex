@@ -112,17 +112,17 @@ defmodule SoSinpleWeb.StockItemLive.Index do
       <:subtitle>
         <%= cond do %>
           <% @is_admin -> %>
-            You can manage stock for this headquarters as group administrator.
+            Vous pouvez gérer le stock pour ce QG en tant qu'administrateur de groupe.
           <% @is_hq_manager -> %>
-            You can manage stock for this headquarters as headquarters manager.
+            Vous pouvez gérer le stock pour ce QG en tant que responsable du QG.
           <% true -> %>
-            You can view but not modify stock for this headquarters.
+            Vous pouvez voir mais pas modifier le stock pour ce QG.
         <% end %>
       </:subtitle>
       <:actions>
         <%= if @can_manage_stock && length(@available_items) > 0 do %>
           <.link patch={~p"/groups/#{@current_group.id}/headquarters/#{@current_headquarters.id}/stock_items/new"}>
-            <.button>Add Item to Stock</.button>
+            <.button>Ajouter un produit au stock</.button>
           </.link>
         <% end %>
       </:actions>
@@ -130,14 +130,14 @@ defmodule SoSinpleWeb.StockItemLive.Index do
 
     <%= if length(@stocks_below_threshold) > 0 do %>
       <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
-        <p class="font-bold">Stock Alert</p>
-        <p>The following items are below their alert threshold:</p>
+        <p class="font-bold">Alerte de stock</p>
+        <p>Les produits suivants sont en dessous de leur seuil d'alerte :</p>
         <ul class="list-disc ml-5 mt-2">
           <%= for stock <- @stocks_below_threshold do %>
             <li>
               <strong><%= stock.item.name %></strong>:
-              <%= stock.available_quantity %> units available
-              (threshold: <%= stock.alert_threshold %>)
+              <%= stock.available_quantity %> unités disponibles
+              (seuil: <%= stock.alert_threshold %>)
             </li>
           <% end %>
         </ul>
@@ -146,10 +146,10 @@ defmodule SoSinpleWeb.StockItemLive.Index do
 
     <.table>
       <.table_head>
-        <:col>Item</:col>
-        <:col>Available Quantity</:col>
-        <:col>Alert Threshold</:col>
-        <:col>Status</:col>
+        <:col>Produit</:col>
+        <:col>Quantité disponible</:col>
+        <:col>Seuil d'alerte</:col>
+        <:col>Statut</:col>
         <:col></:col>
       </.table_head>
       <.table_body>
@@ -171,7 +171,7 @@ defmodule SoSinpleWeb.StockItemLive.Index do
           <:cell><%= stock_item.alert_threshold %></:cell>
           <:cell>
             <%= if Inventory.StockItem.below_alert_threshold?(stock_item) do %>
-              <.badge color="red">Below Threshold</.badge>
+              <.badge color="red">En dessous du seuil</.badge>
             <% else %>
               <.badge color="green">OK</.badge>
             <% end %>

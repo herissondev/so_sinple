@@ -14,7 +14,9 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
      |> assign(:available_items, [])
      |> assign(:total, 0.0)
      |> assign(:address_suggestions, [])
-     |> assign(:address_data, %{})}
+     |> assign(:address_data, %{})
+     |> assign(:finding_optimal_headquarters, false)
+     |> assign(:needs_headquarters_update, false)}
   end
 
   @impl true
@@ -43,12 +45,29 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
 
           <div>
             <h3 class="text-lg font-semibold mb-4">Informations livraison</h3>
-            <.select field={@form[:headquarters_id]} label="Point de vente" options={headquarters_options(@current_group.id)} required />
+            <div class="relative">
+              <%= if @action == :edit do %>
+                <.select field={@form[:headquarters_id]} label="Point de vente" options={headquarters_options(@current_group.id)} required />
+              <% else %>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Point de vente
+                  </label>
+                  <p class="text-sm text-blue-600 italic">
+                    <%= if Map.get(@form.data, :headquarters_id) do %>
+                      QG sélectionné: <%= get_headquarters_name(Map.get(@form.data, :headquarters_id)) %>
+                    <% else %>
+                      Le QG optimal sera automatiquement sélectionné lors de la création de la commande
+                    <% end %>
+                  </p>
+                  <.input field={@form[:headquarters_id]} type="hidden" />
+                </div>
+              <% end %>
+            </div>
 
             <div class="relative">
               <.autocomplete
-                name="adresse_livraison"
-                id="adresse-livraison-autocomplete"
+                field={@form[:adresse_livraison]}
                 label="Adresse de livraison"
                 options={@address_suggestions}
                 selected={Phoenix.HTML.Form.input_value(@form, :adresse_livraison)}
@@ -134,7 +153,6 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
 
         <.input field={@form[:prix_total]} type="hidden" value={@total} />
         <.input field={@form[:date_creation]} type="hidden" />
-        <.input field={@form[:headquarters_id]} type="hidden" />
 
         <.input field={@form[:notes]} type="textarea" label="Notes générales" class="mt-6" />
 
@@ -144,6 +162,20 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
           </.button>
         </:actions>
       </.simple_form>
+
+      <%= if @finding_optimal_headquarters do %>
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div class="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-lg max-w-md w-full">
+            <div class="flex flex-col items-center space-y-4">
+              <div class="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
+              <h3 class="text-lg font-semibold text-center">Calcul de l'itinéraire optimal</h3>
+              <p class="text-sm text-gray-500 text-center">
+                Nous recherchons le QG le plus adapté en fonction du stock disponible et du temps de trajet...
+              </p>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
     """
   end
@@ -190,10 +222,12 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
     order_items = Map.update(socket.assigns.order_items, item_id, 1, &(&1 + 1))
     total = calculate_total(order_items, socket.assigns.available_items)
 
-    {:noreply,
-     socket
-     |> assign(:order_items, order_items)
-     |> assign(:total, total)}
+    updated_socket =
+      socket
+      |> assign(:order_items, order_items)
+      |> assign(:total, total)
+
+    {:noreply, updated_socket}
   end
 
   def handle_event("decrease_quantity", %{"id" => item_id}, socket) do
@@ -208,10 +242,12 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
 
     total = calculate_total(order_items, socket.assigns.available_items)
 
-    {:noreply,
-     socket
-     |> assign(:order_items, order_items)
-     |> assign(:total, total)}
+    updated_socket =
+      socket
+      |> assign(:order_items, order_items)
+      |> assign(:total, total)
+
+    {:noreply, updated_socket}
   end
 
   def handle_event("save", %{"order" => order_params}, socket) do
@@ -263,17 +299,64 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
         {:noreply, socket}
 
       address_info ->
-        {:noreply,
-         socket
-         |> update(:form, fn form ->
-           params = %{
-             "adresse_livraison" => address_info.label,
-             "latitude_livraison" => address_info.lat,
-             "longitude_livraison" => address_info.lon
-           }
-           Phoenix.Component.to_form(Phoenix.HTML.Form.update_values(form.source, params))
-         end)}
+        changeset =
+          socket.assigns.form.source
+          |> Ecto.Changeset.put_change(:adresse_livraison, address_info.label)
+          |> Ecto.Changeset.put_change(:latitude_livraison, address_info.lat)
+          |> Ecto.Changeset.put_change(:longitude_livraison, address_info.lon)
+
+        # Mise à jour du socket avec le changeset
+        updated_socket = socket |> assign(:form, to_form(changeset))
+
+        updated_socket
     end
+  end
+
+  @impl true
+  def handle_info({:find_optimal_headquarters, product_quantities, address_info}, socket) do
+    delivery_coordinates = {address_info.lat, address_info.lon}
+
+    result = SoSinple.DeliveryOptimizer.select_best_headquarters(
+      socket.assigns.current_group.id,
+      product_quantities,
+      delivery_coordinates
+    )
+
+    socket =
+      case result do
+        {:ok, %{headquarters: headquarters, travel_time: travel_time}} ->
+          # Convertir le temps en minutes pour l'affichage
+          travel_time_minutes = Float.round(travel_time / 60, 1)
+
+          # Mettre à jour le formulaire avec le QG sélectionné
+          changeset =
+            socket.assigns.form.source
+            |> Ecto.Changeset.put_change(:headquarters_id, headquarters.id)
+
+          # Message de succès
+          success_message = "Itinéraire optimisé ! Livraison depuis #{headquarters.name}. Temps de trajet estimé: #{travel_time_minutes} minutes."
+
+          # Ajouter un message de notification
+          socket
+          |> assign(:form, to_form(changeset))
+          |> assign(:needs_headquarters_update, false)
+          |> put_flash(:info, success_message)
+
+        {:error, :no_stock_available} ->
+          socket
+          |> put_flash(:error, "Aucun QG n'a le stock suffisant pour cette commande. Veuillez modifier votre commande ou contacter un administrateur.")
+
+        {:error, :no_route_available} ->
+          socket
+          |> put_flash(:warning, "Impossible de calculer un itinéraire vers cette adresse. Veuillez sélectionner un QG manuellement.")
+
+        {:error, _reason} ->
+          socket
+          |> put_flash(:error, "Une erreur est survenue lors de la sélection du QG. Veuillez contacter un administrateur.")
+      end
+
+    # Désactiver l'indicateur de recherche
+    {:noreply, assign(socket, :finding_optimal_headquarters, false)}
   end
 
   defp search_address(query, lat, lon) do
@@ -295,6 +378,87 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
     end
   end
 
+  defp save_order(socket, :new, order_params) do
+    # Géocoder l'adresse avant la sauvegarde
+    case geocode_address(order_params["adresse_livraison"]) do
+      {:ok, %{lat: lat, lon: lon}} ->
+        order_params = order_params
+          |> Map.put("latitude_livraison", lat)
+          |> Map.put("longitude_livraison", lon)
+
+        # Convertir order_items en format attendu par DeliveryOptimizer
+        product_quantities =
+          socket.assigns.order_items
+          |> Enum.filter(fn {_item_id, quantity} -> quantity > 0 end)
+          |> Enum.map(fn {item_id, quantity} -> {item_id, quantity} end)
+          |> Map.new()
+
+        # Si la commande contient des articles, chercher le QG optimal
+        if not Enum.empty?(product_quantities) do
+          delivery_coordinates = {lat, lon}
+
+          case SoSinple.DeliveryOptimizer.select_best_headquarters(
+            socket.assigns.current_group.id,
+            product_quantities,
+            delivery_coordinates
+          ) do
+            {:ok, %{headquarters: headquarters, travel_time: travel_time}} ->
+              # Ajouter le QG sélectionné aux paramètres de la commande
+              order_params = Map.put(order_params, "headquarters_id", headquarters.id)
+
+              # Préparer les paramètres des articles
+              items_params = prepare_items_params(socket.assigns.order_items, socket.assigns.available_items)
+
+              # Créer la commande avec le QG sélectionné
+              case Orders.create_order_with_items(order_params, items_params) do
+                {:ok, %{order: order}} ->
+                  notify_parent({:saved, order})
+                  travel_time_minutes = Float.round(travel_time / 60, 1)
+                  success_message = "Commande créée avec succès ! Livraison depuis #{headquarters.name}. Temps de trajet estimé: #{travel_time_minutes} minutes."
+
+                  {:noreply,
+                   socket
+                   |> put_flash(:info, success_message)
+                   |> push_navigate(to: socket.assigns.patch)}
+
+                {:error, _operation, changeset, _changes} ->
+                  {:noreply, assign(socket, form: to_form(changeset))}
+              end
+
+            {:error, :no_stock_available} ->
+              changeset = Orders.change_order(%SoSinple.Orders.Order{})
+              {:noreply,
+               socket
+               |> assign(:form, to_form(changeset))
+               |> put_flash(:error, "Aucun QG n'a le stock suffisant pour cette commande. Veuillez modifier votre commande ou contacter un administrateur.")}
+
+            {:error, :no_route_available} ->
+              changeset = Orders.change_order(%SoSinple.Orders.Order{})
+              {:noreply,
+               socket
+               |> assign(:form, to_form(changeset))
+               |> put_flash(:warning, "Impossible de calculer un itinéraire vers cette adresse. Veuillez sélectionner un QG manuellement.")}
+
+            {:error, _reason} ->
+              changeset = Orders.change_order(%SoSinple.Orders.Order{})
+              {:noreply,
+               socket
+               |> assign(:form, to_form(changeset))
+               |> put_flash(:error, "Une erreur est survenue lors de la sélection du QG. Veuillez contacter un administrateur.")}
+          end
+        else
+          {:noreply,
+           socket
+           |> put_flash(:error, "Veuillez ajouter au moins un article à la commande.")}
+        end
+
+      _error ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Impossible de géocoder l'adresse de livraison. Veuillez vérifier l'adresse.")}
+    end
+  end
+
   defp save_order(socket, :edit, order_params) do
     case Orders.update_order(socket.assigns.order, order_params) do
       {:ok, order} ->
@@ -310,22 +474,28 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
     end
   end
 
-  defp save_order(socket, :new, order_params) do
-    items_params = prepare_items_params(socket.assigns.order_items, socket.assigns.available_items)
+  defp geocode_address(address) when is_binary(address) and address != "" do
+    url = "https://api-adresse.data.gouv.fr/search/"
+    params = %{
+      q: address,
+      limit: 1
+    }
 
-    case Orders.create_order_with_items(order_params, items_params) do
-      {:ok, %{order: order}} ->
-        notify_parent({:saved, order})
-
-        {:noreply,
-         socket
-         |> put_flash(:info, "Commande créée avec succès")
-         |> push_navigate(to: socket.assigns.patch)}
-
-      {:error, _operation, changeset, _changes} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+    case HTTPoison.get(url, [], params: params) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        case Jason.decode(body) do
+          {:ok, %{"features" => [feature | _]}} ->
+            coords = feature["geometry"]["coordinates"]
+            {:ok, %{lat: Enum.at(coords, 1), lon: Enum.at(coords, 0)}}
+          _ ->
+            {:error, :no_results}
+        end
+      _ ->
+        {:error, :request_failed}
     end
   end
+
+  defp geocode_address(_), do: {:error, :invalid_address}
 
   defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 
@@ -367,4 +537,22 @@ defmodule SoSinpleWeb.OrderLive.FormComponent do
       end
     end)
   end
+
+  defp get_headquarters_name(headquarters_id) when is_integer(headquarters_id) do
+    case Organizations.get_headquarters!(headquarters_id) do
+      %{name: name} -> name
+      _ -> "Inconnu"
+    end
+  rescue
+    _ -> "Inconnu"
+  end
+
+  defp get_headquarters_name(headquarters_id) when is_binary(headquarters_id) do
+    case Integer.parse(headquarters_id) do
+      {id, ""} -> get_headquarters_name(id)
+      _ -> "Inconnu"
+    end
+  end
+
+  defp get_headquarters_name(_), do: "Inconnu"
 end

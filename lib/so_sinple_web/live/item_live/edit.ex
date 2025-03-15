@@ -28,10 +28,6 @@ defmodule SoSinpleWeb.ItemLive.Edit do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        Edit Item
-        <:subtitle>Edit item for <%= @current_group.name %></:subtitle>
-      </.header>
 
       <.live_component
         module={SoSinpleWeb.ItemLive.FormComponent}

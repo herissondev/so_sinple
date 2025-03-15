@@ -10,5 +10,23 @@ defmodule SoSinpleWeb.Layouts do
   """
   use SoSinpleWeb, :html
 
+  alias SoSinple.Organizations
+  alias SoSinple.Repo
+  import Ecto.Query
+
   embed_templates "layouts/*"
+
+  @doc """
+  Checks if a user has a specific role.
+  """
+  def has_role?(user, role) when not is_nil(user) do
+    from(ur in Organizations.UserRole,
+      where: ur.user_id == ^user.id and ur.role == ^role and ur.active == true,
+      select: count(ur.id)
+    )
+    |> Repo.one()
+    |> Kernel.>(0)
+  end
+
+  def has_role?(_user, _role), do: false
 end

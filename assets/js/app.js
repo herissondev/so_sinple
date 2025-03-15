@@ -23,12 +23,14 @@ import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
 import { Hooks as FluxonHooks, DOM as FluxonDOM } from 'fluxon';
+import MapHook from "./hooks/map_hook"
+import RouteMapHook from "./hooks/route_map_hook"
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: FluxonHooks,
+  hooks: { ...FluxonHooks, MapHook, RouteMapHook },
   dom: { 
     onBeforeElUpdated(from, to) { 
       FluxonDOM.onBeforeElUpdated(from, to);

@@ -30,3 +30,8 @@
     {@inner_content}
   </div>
 </main>
+<script>
+window.addEventListener("phx:redirect", (event) => {
+  window.open(event.detail.to, "_blank");
+});
+</script>

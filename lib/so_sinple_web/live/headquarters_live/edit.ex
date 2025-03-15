@@ -23,11 +23,6 @@ defmodule SoSinpleWeb.HeadquartersLive.Edit do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        Edit Headquarters
-        <:subtitle>Edit headquarters for <%= @current_group.name %></:subtitle>
-      </.header>
-
       <.live_component
         module={SoSinpleWeb.HeadquartersLive.FormComponent}
         id={@headquarters.id}

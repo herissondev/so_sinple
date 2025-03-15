@@ -10,9 +10,9 @@ defmodule SoSinpleWeb.ItemLive.Show do
   end
 
   @impl true
-  def handle_params(%{"group_id" => _group_id, "item_id" => _item_id}, _, socket) do
+  def handle_params(%{"group_id" => _group_id, "item_id" => item_id}, _, socket) do
     # L'item est déjà assigné par le hook check_item_access
-    item = socket.assigns.current_item
+    item = Inventory.get_item!(item_id)
 
     # Récupérer les stocks de cet item dans les différents QG
     stock_items = Inventory.list_stock_items_by_item(item.id)

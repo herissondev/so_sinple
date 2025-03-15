@@ -2,6 +2,7 @@ defmodule SoSinple.Organizations.Headquarters do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @derive {Jason.Encoder, only: [:id, :name, :address, :latitude, :longitude, :phone, :active]}
   schema "headquarters" do
     field :active, :boolean, default: true
     field :name, :string

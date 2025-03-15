@@ -95,6 +95,7 @@ defmodule SoSinpleWeb.Router do
       live "/groups/:group_id/items", ItemLive.Index, :index
       live "/groups/:group_id/items/new", ItemLive.New, :new
       live "/groups/:group_id/items/:id/edit", ItemLive.Edit, :edit
+      live "/groups/:group_id/items/:item_id", ItemLive.Show, :show
 
       # Routes pour les rôles utilisateurs d'un groupe
       live "/groups/:group_id/user_roles", UserRoleLive.Index, :index
@@ -117,12 +118,22 @@ defmodule SoSinpleWeb.Router do
       live "/groups/:group_id/headquarters/:headquarter_id/stock_items/:stock_item_id/edit", StockItemLive.Edit, :edit
       live "/groups/:group_id/headquarters/:headquarter_id/stock_items/:stock_item_id", StockItemLive.Show, :show
 
-
       # Gestion des commandes d'un QG
       live "/groups/:group_id/headquarters/:headquarter_id/orders", OrderLive.Index, :index
       live "/groups/:group_id/headquarters/:headquarter_id/orders/new", OrderLive.New, :new
       live "/groups/:group_id/headquarters/:headquarter_id/orders/:id/edit", OrderLive.Edit, :edit
       live "/groups/:group_id/headquarters/:headquarter_id/orders/:id", OrderLive.Show, :show
+    end
+
+    # Routes pour les livreurs
+    live_session :delivery_person_access,
+      on_mount: [{SoSinpleWeb.UserAuth, :ensure_authenticated},
+                 {SoSinpleWeb.UserAuth, :mount_current_user},
+                 {SoSinpleWeb.UserAuth, :check_group_access},
+                 {SoSinpleWeb.UserAuth, :check_delivery_person_access}],
+      layout: {SoSinpleWeb.Layouts, :dashboard} do
+      live "/groups/:group_id/delivery", DeliveryLive.Index, :index
+      live "/groups/:group_id/delivery/orders/:id", DeliveryLive.Show, :show
     end
   end
 

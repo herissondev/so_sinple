@@ -31,10 +31,6 @@ defmodule SoSinpleWeb.StockItemLive.New do
   @impl true
   def render(assigns) do
     ~H"""
-    <.header>
-      New Stock Item
-      <:subtitle>Add a new item to <%= @current_headquarters.name %>'s stock</:subtitle>
-    </.header>
 
     <.live_component
       module={SoSinpleWeb.StockItemLive.FormComponent}

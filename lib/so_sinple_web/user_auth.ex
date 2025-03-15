@@ -419,5 +419,54 @@ defmodule SoSinpleWeb.UserAuth do
 
   defp maybe_store_return_to(conn), do: conn
 
-  defp signed_in_path(_conn), do: ~p"/"
+  defp signed_in_path(_conn), do: ~p"/groups"
+
+  @doc """
+  Used for routes that require delivery person (livreur) access.
+  Checks if the current user has the 'livreur' role.
+  """
+  def on_mount(:check_delivery_person_access, _params, session, socket) do
+    socket = mount_current_user(socket, session)
+
+    # Vérifier si l'utilisateur est connecté
+    if socket.assigns[:current_user] do
+      # Récupérer les rôles de l'utilisateur
+      import Ecto.Query, only: [from: 2]
+      alias SoSinple.Organizations.UserRole
+
+      roles = from(ur in UserRole,
+        where: ur.user_id == ^socket.assigns.current_user.id and ur.active == true and ur.role == "livreur",
+        select: ur
+      )
+      |> Repo.all()
+
+      if length(roles) > 0 do
+        # Store headquarter_id for each available delivery headquarters
+        headquarters_ids = roles
+                          |> Enum.map(& &1.headquarters_id)
+                          |> Enum.filter(& &1)  # Remove nil values
+
+        # L'utilisateur a le rôle de livreur, on le laisse accéder
+        # et on lui passe ses QGs d'affectation
+        {:cont,
+         socket
+         |> Phoenix.Component.assign(:delivery_headquarters_ids, headquarters_ids)}
+      else
+        # Pas autorisé: rediriger vers la page d'accueil avec une alerte
+        socket =
+          socket
+          |> Phoenix.LiveView.put_flash(:error, "Vous n'avez pas l'accès à cette section.")
+          |> Phoenix.LiveView.redirect(to: ~p"/")
+
+        {:halt, socket}
+      end
+    else
+      socket =
+        socket
+        |> Phoenix.LiveView.put_flash(:error, "Vous devez être connecté pour accéder à cette section.")
+        |> Phoenix.LiveView.redirect(to: ~p"/users/log_in")
+
+      {:halt, socket}
+    end
+  end
 end

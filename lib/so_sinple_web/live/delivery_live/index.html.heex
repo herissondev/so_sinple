@@ -1,0 +1,113 @@
+<div class="container mx-auto px-4 py-6">
+  <h1 class="text-2xl font-bold mb-6">Gestion des livraisons</h1>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold mb-4">Mes commandes à livrer</h2>
+    <%= if @assigned_orders |> Enum.empty?() do %>
+      <div class="bg-blue-50 p-4 rounded-md text-blue-700">
+        Vous n'avez aucune commande à livrer pour le moment.
+      </div>
+    <% else %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white rounded-lg overflow-hidden shadow-md">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="py-3 px-4 text-left">ID</th>
+              <th class="py-3 px-4 text-left">Client</th>
+              <th class="py-3 px-4 text-left">Adresse</th>
+              <th class="py-3 px-4 text-left">Statut</th>
+              <th class="py-3 px-4 text-left">QG</th>
+              <th class="py-3 px-4 text-left">Prix</th>
+              <th class="py-3 px-4 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <%= for order <- @assigned_orders do %>
+              <tr class="hover:bg-gray-50">
+                <td class="py-3 px-4"><%= order.id %></td>
+                <td class="py-3 px-4"><%= order.client_prenom %> <%= order.client_nom %></td>
+                <td class="py-3 px-4"><%= order.adresse_livraison %></td>
+                <td class="py-3 px-4">
+                  <span class={[
+                    "px-2 py-1 rounded-full text-xs font-semibold",
+                    order.status == "pret" && "bg-yellow-100 text-yellow-800",
+                    order.status == "en_livraison" && "bg-blue-100 text-blue-800"
+                  ]}>
+                    <%= case order.status do
+                      "pret" -> "Prêt"
+                      "en_livraison" -> "En livraison"
+                      _ -> order.status
+                    end %>
+                  </span>
+                </td>
+                <td class="py-3 px-4"><%= order.headquarters.name %></td>
+                <td class="py-3 px-4"><%= Number.Currency.number_to_currency(order.prix_total, unit: "€") %></td>
+                <td class="py-3 px-4 space-x-2">
+                  <%= if order.status == "pret" do %>
+                    <button
+                      phx-click="start_delivery"
+                      phx-value-id={order.id}
+                      class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md text-sm"
+                    >
+                      Commencer la livraison
+                    </button>
+                  <% end %>
+                  <.link
+                    navigate={~p"/groups/#{@current_group.id}/delivery/orders/#{order.id}"}
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white py-1 px-3 rounded-md text-sm"
+                  >
+                    Détails
+                  </.link>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+
+  <div>
+    <h2 class="text-xl font-semibold mb-4">Commandes disponibles pour livraison</h2>
+    <%= if @available_orders |> Enum.empty?() do %>
+      <div class="bg-blue-50 p-4 rounded-md text-blue-700">
+        Aucune commande n'est disponible pour livraison.
+      </div>
+    <% else %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white rounded-lg overflow-hidden shadow-md">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="py-3 px-4 text-left">ID</th>
+              <th class="py-3 px-4 text-left">Client</th>
+              <th class="py-3 px-4 text-left">Adresse</th>
+              <th class="py-3 px-4 text-left">QG</th>
+              <th class="py-3 px-4 text-left">Prix</th>
+              <th class="py-3 px-4 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <%= for order <- @available_orders do %>
+              <tr class="hover:bg-gray-50">
+                <td class="py-3 px-4"><%= order.id %></td>
+                <td class="py-3 px-4"><%= order.client_prenom %> <%= order.client_nom %></td>
+                <td class="py-3 px-4"><%= order.adresse_livraison %></td>
+                <td class="py-3 px-4"><%= order.headquarters.name %></td>
+                <td class="py-3 px-4"><%= Number.Currency.number_to_currency(order.prix_total, unit: "€") %></td>
+                <td class="py-3 px-4">
+                  <button
+                    phx-click="self_assign"
+                    phx-value-id={order.id}
+                    class="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded-md text-sm"
+                  >
+                    Prendre cette commande
+                  </button>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div> 

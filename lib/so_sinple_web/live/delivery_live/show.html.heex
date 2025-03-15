@@ -1,0 +1,172 @@
+<div class="container md:mx-auto md:px-2 py-4 sm:py-6">
+  <div class="flex items-center mb-4 sm:mb-6">
+    <.link navigate={~p"/groups/#{@current_group.id}/delivery"} class="mr-3 sm:mr-4 text-gray-600 hover:text-gray-900">
+      <i class="fas fa-arrow-left"></i> Retour
+    </.link>
+    <h1 class="text-xl sm:text-2xl font-bold">Commande #<%= @order.id %></h1>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-8">
+    <!-- Informations sur la commande -->
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md col-span-1 md:col-span-2">
+      <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Détails de la commande</h2>
+      
+      <div class="mb-3 sm:mb-4">
+        <p class="text-sm text-gray-500">Statut</p>
+        <div class="mt-1">
+          <span class={[
+            "px-2 sm:px-3 py-1 rounded-full text-sm font-medium",
+            @order.status == "pret" && "bg-yellow-100 text-yellow-800",
+            @order.status == "en_livraison" && "bg-blue-100 text-blue-800",
+            @order.status == "livre" && "bg-green-100 text-green-800",
+            @order.status == "annule" && "bg-red-100 text-red-800"
+          ]}>
+            <%= case @order.status do
+              "pret" -> "Prêt"
+              "en_livraison" -> "En livraison"
+              "livre" -> "Livré"
+              "annule" -> "Annulé"
+              _ -> @order.status
+            end %>
+          </span>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <p class="text-sm text-gray-500">Date de création</p>
+          <p class="mt-1">
+            <%= if @order.date_creation do %>
+              <%= Calendar.strftime(@order.date_creation, "%d/%m/%Y %H:%M") %>
+            <% else %>
+              -
+            <% end %>
+          </p>
+        </div>
+       
+        <div>
+          <p class="text-sm text-gray-500">QG</p>
+          <p class="mt-1"><%= @order.headquarters.name %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Prix total</p>
+          <p class="mt-1 font-semibold"><%= Number.Currency.number_to_currency(@order.prix_total, unit: "€") %></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informations sur le client -->
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+      <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Client</h2>
+      <div class="space-y-2 sm:space-y-3">
+        <div>
+          <p class="text-sm text-gray-500">Nom</p>
+          <p class="mt-1 font-medium"><%= @order.client_prenom %> <%= @order.client_nom %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Téléphone</p>
+          <p class="mt-1">
+            <a href={"tel:#{@order.client_telephone}"} class="text-blue-600 hover:underline">
+              <%= @order.client_telephone %>
+            </a>
+          </p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Adresse de livraison</p>
+          <p class="mt-1"><%= @order.adresse_livraison %></p>
+        </div>
+        
+        <%= if @order.latitude_livraison && @order.longitude_livraison do %>
+          <div class="mt-3 sm:mt-4">
+            <button 
+              phx-click="open_navigation"
+              phx-value-latitude={@order.latitude_livraison}
+              phx-value-longitude={@order.longitude_livraison}
+              class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-md text-base flex items-center justify-center"
+            >
+              <i class="fas fa-map-marker-alt mr-2"></i> Ouvrir l'itinéraire
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carte d'itinéraire -->
+  <%= if @encoded_route && @from_coords && @to_coords do %>
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md mb-4 sm:mb-8">
+      <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Itinéraire de livraison</h2>
+      <.live_component
+        module={SoSinpleWeb.RouteMapComponent}
+        id="route-map"
+        encoded_route={@encoded_route}
+        from_coords={@from_coords}
+        to_coords={@to_coords}
+      />
+    </div>
+  <% end %>
+
+  <!-- Contenu de la commande -->
+  <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md mb-4 sm:mb-8">
+    <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Articles</h2>
+    
+    <div class="overflow-x-auto -mx-4 sm:mx-0">
+      <table class="min-w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="py-2 sm:py-3 px-3 sm:px-4 text-left text-sm">Article</th>
+            <th class="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm">Qté</th>
+            <th class="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm">Prix</th>
+            <th class="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <%= for item <- @order.order_items do %>
+            <tr>
+              <td class="py-2 sm:py-3 px-3 sm:px-4 text-sm"><%= item.item.name %></td>
+              <td class="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm"><%= item.quantite %></td>
+              <td class="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm"><%= Number.Currency.number_to_currency(item.prix_unitaire, unit: "€") %></td>
+              <td class="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm"><%= Number.Currency.number_to_currency(item.prix_unitaire * item.quantite, unit: "€") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="bg-gray-50">
+            <td colspan="3" class="py-2 sm:py-3 px-3 sm:px-4 text-right font-medium text-sm">Total</td>
+            <td class="py-2 sm:py-3 px-3 sm:px-4 text-right font-semibold text-sm"><%= Number.Currency.number_to_currency(@order.prix_total, unit: "€") %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <%= if @order.notes && @order.notes != "" do %>
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md mb-4 sm:mb-8">
+      <h2 class="text-lg sm:text-xl font-semibold mb-2">Notes</h2>
+      <p class="text-gray-700 text-sm sm:text-base"><%= @order.notes %></p>
+    </div>
+  <% end %>
+
+  <!-- Actions -->
+  <%= if @order.status in ["en_livraison"] do %>
+    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+      <button 
+        phx-click="complete_delivery"
+        phx-value-id={@order.id}
+        class="bg-green-500 hover:bg-green-600 text-white py-4 sm:py-3 px-6 rounded-md font-medium w-full text-base"
+      >
+        Marquer comme livrée
+      </button>
+      
+      <button 
+        phx-click="cancel_delivery"
+        phx-value-id={@order.id}
+        class="bg-red-500 hover:bg-red-600 text-white py-4 sm:py-3 px-6 rounded-md font-medium w-full text-base"
+        data-confirm="Êtes-vous sûr de vouloir annuler cette livraison ?"
+      >
+        Annuler la livraison
+      </button>
+    </div>
+  <% end %>
+</div>

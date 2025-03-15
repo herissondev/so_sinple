@@ -6,24 +6,128 @@ defmodule SoSinpleWeb.HeadquartersLive.FormComponent do
   @impl true
   def render(assigns) do
     ~H"""
-    <div>
-      <.simple_form
+    <div class="max-w-3xl mx-auto w-full p-6">
+      <h1 class="text-2xl text-zinc-800 dark:text-zinc-200 font-bold">
+        <%= if @action == :new, do: "Ajouter un QG", else: "Modifier le QG" %>
+      </h1>
+      <p class="mt-1 text-zinc-600 dark:text-zinc-400">
+        <%= if @action == :new do %>
+          Ajoutez un nouveau QG pour votre groupe.
+        <% else %>
+          Mettez à jour les informations du QG.
+        <% end %>
+      </p>
+
+      <.separator class="my-8" />
+
+      <.form
         for={@form}
         id="headquarters-form"
         phx-target={@myself}
         phx-change="validate"
         phx-submit="save"
       >
-        <.input field={@form[:name]} type="text" label="Name" />
-        <.input field={@form[:address]} type="textarea" label="Address" />
-        <.input field={@form[:latitude]} type="number" label="Latitude" step="any" />
-        <.input field={@form[:longitude]} type="number" label="Longitude" step="any" />
-        <.input field={@form[:phone]} type="text" label="Phone" />
-        <.input field={@form[:active]} type="checkbox" label="Active" />
-        <:actions>
-          <.button phx-disable-with="Saving...">Save Headquarters</.button>
-        </:actions>
-      </.simple_form>
+        <section class="mb-10">
+          <h2 class="text-lg font-semibold text-zinc-700 dark:text-zinc-300 mb-4">Informations générales</h2>
+          <div class="space-y-6">
+            <.input
+              field={@form[:name]}
+              type="text"
+              label="Nom du QG"
+              sublabel="Requis"
+              placeholder="Entrez le nom du QG"
+              help_text="Choisissez un nom identifiable pour ce QG"
+              class="pl-9"
+            >
+              <:inner_prefix>
+                <.icon name="hero-building-office" class="size-4 text-zinc-500" />
+              </:inner_prefix>
+            </.input>
+
+            <.textarea
+              field={@form[:address]}
+              label="Adresse"
+              sublabel="Requis"
+              description="Adresse complète du QG"
+              placeholder="Numéro, rue, code postal, ville..."
+              rows={3}
+            />
+          </div>
+        </section>
+
+        <section class="mb-10">
+          <h2 class="text-lg font-semibold text-zinc-700 dark:text-zinc-300 mb-4">Localisation</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <.input
+              field={@form[:latitude]}
+              type="number"
+              step="any"
+              label="Latitude"
+              sublabel="Requis"
+              placeholder="Ex: 48.8566"
+              help_text="Coordonnée géographique nord-sud"
+              class="pl-9"
+            >
+              <:inner_prefix>
+                <.icon name="hero-map-pin" class="size-4 text-zinc-500" />
+              </:inner_prefix>
+            </.input>
+
+            <.input
+              field={@form[:longitude]}
+              type="number"
+              step="any"
+              label="Longitude"
+              sublabel="Requis"
+              placeholder="Ex: 2.3522"
+              help_text="Coordonnée géographique est-ouest"
+              class="pl-9"
+            >
+              <:inner_prefix>
+                <.icon name="hero-map-pin" class="size-4 text-zinc-500" />
+              </:inner_prefix>
+            </.input>
+          </div>
+        </section>
+
+        <section class="mb-10">
+          <h2 class="text-lg font-semibold text-zinc-700 dark:text-zinc-300 mb-4">Contact et statut</h2>
+          <div class="space-y-6">
+            <.input
+              field={@form[:phone]}
+              type="tel"
+              label="Téléphone"
+              sublabel="Requis"
+              placeholder="Ex: +33 1 23 45 67 89"
+              help_text="Numéro de téléphone principal"
+              class="pl-9"
+            >
+              <:inner_prefix>
+                <.icon name="hero-phone" class="size-4 text-zinc-500" />
+              </:inner_prefix>
+            </.input>
+
+            <.switch
+              field={@form[:active]}
+              label="Actif ?"
+              help_text="Les sièges sociaux actifs sont visibles et peuvent être sélectionnés"
+            />
+          </div>
+        </section>
+
+        <div class="flex justify-end space-x-4">
+          <.button
+            type="button"
+            variant="ghost"
+            phx-click={JS.navigate(~p"/headquarters")}
+          >
+            Annuler
+          </.button>
+          <.button variant="solid" type="submit">
+            <%= if @action == :new, do: "Créer le QG", else: "Enregistrer les modifications" %>
+          </.button>
+        </div>
+      </.form>
     </div>
     """
   end

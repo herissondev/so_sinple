@@ -484,4 +484,17 @@ defmodule SoSinple.Organizations do
     group = get_group!(group_id)
     group.admin_id == user_id
   end
+
+  @doc """
+Returns a list of headquarters that have enough stock for the given product and quantity.
+"""
+def list_headquarters_with_stock(product_id, quantity) do
+  from(h in Headquarters,
+    join: s in Stock,
+    on: s.headquarters_id == h.id,
+    where: s.product_id == ^product_id and s.quantity >= ^quantity,
+    select: h
+  )
+  |> Repo.all()
+end
 end

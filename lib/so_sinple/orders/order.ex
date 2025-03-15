@@ -2,6 +2,7 @@ defmodule SoSinple.Orders.Order do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @derive {Jason.Encoder, only: [:id, :status, :date_creation, :date_livraison_prevue, :client_nom, :client_prenom, :client_adresse, :client_telephone, :prix_total, :adresse_livraison, :latitude_livraison, :longitude_livraison, :notes, :headquarters_id, :livreur_id]}
   schema "orders" do
     field :status, :string
     field :date_creation, :naive_datetime

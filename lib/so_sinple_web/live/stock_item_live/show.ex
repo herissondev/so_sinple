@@ -11,10 +11,9 @@ defmodule SoSinpleWeb.StockItemLive.Show do
   end
 
   @impl true
-  def handle_params(%{"group_id" => _group_id, "headquarter_id" => headquarter_id, "stock_item_id" => _stock_item_id}, _, socket) do
+  def handle_params(%{"group_id" => _group_id, "headquarter_id" => headquarter_id, "stock_item_id" => stock_item_id}, _, socket) do
     # Le stock est déjà assigné par le hook check_stock_item_access
-    stock_item = socket.assigns.current_stock_item
-    stock_item = Inventory.get_stock_item_with_associations!(stock_item.id)
+    stock_item = Inventory.get_stock_item_with_associations!(stock_item_id)
 
     # Vérifier si l'utilisateur est l'administrateur du groupe ou le responsable du QG
     is_admin = socket.assigns.current_group.admin_id == socket.assigns.current_user.id
@@ -80,11 +79,11 @@ defmodule SoSinpleWeb.StockItemLive.Show do
       <:subtitle>
         <%= cond do %>
           <% @is_admin -> %>
-            You can manage stock levels as group administrator.
+            Vous pouvez gérer les niveaux de stock en tant qu'administrateur de groupe.
           <% @is_hq_manager -> %>
-            You can manage stock levels as headquarters manager.
+            Vous pouvez gérer les niveaux de stock en tant que responsable du QG.
           <% true -> %>
-            Only administrators can manage stock levels.
+            Seuls les administrateurs peuvent gérer les niveaux de stock.
         <% end %>
       </:subtitle>
     </.header>
@@ -100,7 +99,7 @@ defmodule SoSinpleWeb.StockItemLive.Show do
               <input type="number" name="quantity" id="quantity" min="1" value="1" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />
             </div>
             <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-              Add
+              Ajouter
             </button>
           </form>
         </div>
@@ -114,7 +113,7 @@ defmodule SoSinpleWeb.StockItemLive.Show do
               <input type="number" name="quantity" id="quantity" min="1" max={@stock_item.available_quantity} value="1" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />
             </div>
             <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-              Remove
+              Retirer
             </button>
           </form>
         </div>

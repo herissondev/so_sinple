@@ -32,11 +32,6 @@ defmodule SoSinpleWeb.UserRoleLive.Edit do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        Edit User Role
-        <:subtitle>Update member role in <%= @current_group.name %></:subtitle>
-      </.header>
-
       <.live_component
         module={SoSinpleWeb.UserRoleLive.FormComponent}
         id={@user_role.id}

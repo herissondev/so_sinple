@@ -1,18 +1,26 @@
 # SoSinple
 
-To start your Phoenix server:
+Plateforme intelligente de gestion de livraison multi-sites développée lors du HACKATHON MARGO x ENSIMAG pour les SOS des listes BDE des INP
 
-  * Run `mix setup` to install and setup dependencies
-  * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+## CONTEXTE
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+Application web conçue pour les organisations (comme les BDE des INP) qui possèdent plusieurs qg de livraison pendant les SOS et qui souhaitent optimiser leur système de livraison.
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+## TECHNOLOGIES
 
-## Learn more
+- **Backend**: Elixir, Phoenix Framework, LiveView
+- **Frontend**: TailwindCSS, MapLibre GL
+- **API**: Mobilités-M pour les itinéraires optimisés
+- **Déploiement**: Fly.io
 
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+## FONCTIONNALITÉS
+
+- 🏢 **Gestion multi-sites**: Création et gestion de plusieurs QGs
+- 🗺️ **Cartographie interactive**: Visualisation des QGs, commandes et itinéraires
+- 🚚 **Gestion des livreurs**: Assignation et suivi des commandes
+- 📱 **Interface responsive**: Utilisable sur mobile pour les livreurs en déplacement
+- 📊 **Tableau de bord**: Suivi des performances et statistiques
+
+## DÉMO
+
+Application en ligne: [https://so-sinple.fly.dev/](https://so-sinple.fly.dev/)

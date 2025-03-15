@@ -299,4 +299,15 @@ defmodule SoSinple.Inventory do
       stock_item -> stock_item.available_quantity >= quantity
     end
   end
+
+  @doc """
+  Gets the current stock level for a specific item at a headquarters.
+  Returns {:ok, quantity} if the stock item exists, {:error, :not_found} otherwise.
+  """
+  def get_stock_level(headquarters_id, item_id) do
+    case get_stock_item_by_headquarters_and_item(headquarters_id, item_id) do
+      %StockItem{available_quantity: quantity} -> {:ok, quantity}
+      nil -> {:error, :not_found}
+    end
+  end
 end

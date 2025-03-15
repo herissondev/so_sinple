@@ -12,7 +12,7 @@ defmodule SoSinpleWeb.UserRoleLive.New do
     else
       {:ok,
        socket
-       |> put_flash(:error, "Only the group administrator can add user roles")
+       |> put_flash(:error, "Seul l'administrateur du groupe peut ajouter des membres")
        |> redirect(to: ~p"/groups/#{socket.assigns.current_group.id}/user_roles")}
     end
   end
@@ -23,7 +23,7 @@ defmodule SoSinpleWeb.UserRoleLive.New do
 
     {:noreply,
      socket
-     |> assign(:page_title, "New User Role")
+     |> assign(:page_title, "Nouveau membre")
      |> assign(:user_role, user_role)}
   end
 
@@ -31,11 +31,6 @@ defmodule SoSinpleWeb.UserRoleLive.New do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        New User Role
-        <:subtitle>Add a new member to <%= @current_group.name %></:subtitle>
-      </.header>
-
       <.live_component
         module={SoSinpleWeb.UserRoleLive.FormComponent}
         id={:new}
@@ -47,7 +42,7 @@ defmodule SoSinpleWeb.UserRoleLive.New do
         patch={~p"/groups/#{@current_group.id}/user_roles"}
       />
 
-      <.back navigate={~p"/groups/#{@current_group.id}/user_roles"} class="mt-6">Back to user roles</.back>
+      <.back navigate={~p"/groups/#{@current_group.id}/user_roles"} class="mt-6">Retour aux membres</.back>
     </div>
     """
   end
@@ -56,7 +51,7 @@ defmodule SoSinpleWeb.UserRoleLive.New do
   def handle_info({SoSinpleWeb.UserRoleLive.FormComponent, {:saved, _user_role}}, socket) do
     {:noreply,
      socket
-     |> put_flash(:info, "User role created successfully")
+     |> put_flash(:info, "Membre ajouté avec succès")
      |> push_navigate(to: ~p"/groups/#{socket.assigns.current_group.id}/user_roles")}
   end
 end

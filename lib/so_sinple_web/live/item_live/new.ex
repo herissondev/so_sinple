@@ -27,11 +27,7 @@ defmodule SoSinpleWeb.ItemLive.New do
   @impl true
   def render(assigns) do
     ~H"""
-    <div>
-      <.header>
-        New Item
-        <:subtitle>Create a new item for <%= @current_group.name %></:subtitle>
-      </.header>
+    <div class="m-auto h-full">
 
       <.live_component
         module={SoSinpleWeb.ItemLive.FormComponent}

@@ -23,10 +23,6 @@ defmodule SoSinpleWeb.GroupLive.New do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        New Group
-        <:subtitle>Create a new group to manage your items and headquarters</:subtitle>
-      </.header>
 
       <.live_component
         module={SoSinpleWeb.GroupLive.FormComponent}
